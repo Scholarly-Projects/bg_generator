@@ -1,5 +1,3 @@
-# script.py
-
 import os
 import random
 import math
@@ -17,7 +15,7 @@ RESOLUTIONS = [
 ]
 
 DPI = 600
-NUM_PATTERNS = 4  # var1 (refined lattice) + 3 new variations
+NUM_PATTERNS = 4  
 
 def load_color_swatches():
     """Load 1–5 solid-color .png files from A/ as color swatches."""
@@ -54,8 +52,7 @@ def load_color_swatches():
     return colors
 
 # ======================
-# VAR1: REFINED WOVEN LATTICE (your favorite, cleaned up)
-# Delicate grid with organic thread jitter — NO CIRCLES
+# VAR1: REFINED WOVEN LATTICE 
 # ======================
 def generate_var1(width, height, colors, seed):
     random.seed(seed)
@@ -146,7 +143,6 @@ def generate_var2(width, height, colors, seed):
 
 # ======================
 # VAR3: INTERWOVEN DIAGONALS
-# Criss-crossing diagonal threads with variable density
 # ======================
 def generate_var3(width, height, colors, seed):
     random.seed(seed)
@@ -191,7 +187,6 @@ def generate_var3(width, height, colors, seed):
 
 # ======================
 # VAR4: MICRO-WEAVE
-# Ultra-fine grid with randomized thread breaks (like aged fabric)
 # ======================
 def generate_var4(width, height, colors, seed):
     random.seed(seed)
