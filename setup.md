@@ -9,4 +9,4 @@ python script.py
 
 python qr_script.py https://github.com/Scholarly-Projects/bg_generator
 
-python qr_script.py https://github.com/Scholarly-Projects/bg_generator --analytics=G-YOURANALYTICSID
+python qr_script.py https://github.com/Scholarly-Projects/bg_generator --analytics=G-12NFKFDD58
