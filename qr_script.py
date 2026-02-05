@@ -12,14 +12,10 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_FOLDER = os.path.join(SCRIPT_DIR, 'A')
 OUTPUT_FOLDER = os.path.join(SCRIPT_DIR, 'B')
 
-RESOLUTIONS = [
-    (1920, 1080),   # Landscape
-    (1080, 1920),   # Portrait
-    (1920, 1920),   # Square
-]
+RESOLUTION = (1920, 1920)  # Only square resolution
 
 DPI = 600
-NUM_PATTERNS = 5  # Updated to include the new sarape pattern
+NUM_PATTERNS = 8  # Increased to include serape variations
 GOOGLE_ANALYTICS_ID = "G-XXXXXXXXXX"  # Replace with your actual Google Analytics ID
 
 def load_color_swatches():
@@ -67,261 +63,477 @@ def generate_qr_code(url, size):
     qr.add_data(url)
     qr.make(fit=True)
     
-    qr_img = qr.make_image(fill_color="black", back_color="transparent")
+    qr_img = qr.make_image(fill_color="black", back_color="white")
     qr_img = qr_img.convert("RGBA")
     
-    # Resize to fit within our canvas while maintaining aspect ratio
-    qr_size = min(size[0], size[1]) // 2  # Make QR code half of the smaller dimension
-    qr_img = qr_img.resize((qr_size, qr_size), Image.LANCZOS)
+    # Resize to match our canvas
+    qr_img = qr_img.resize(size, Image.LANCZOS)
     
     return qr_img
 
-# ======================
-# VAR1: REFINED WOVEN LATTICE WITH QR
-# ======================
-def generate_var1(width, height, colors, seed, qr_img):
+def get_color_at_position(y, height, colors, seed):
+    """Get color based on vertical position for serape effect."""
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    num_colors = len(colors)
+    if num_colors < 2:
+        return colors[0] if colors else (0, 0, 0)
+    
+    # Create color bands
+    band_height = height // num_colors
+    
+    # Determine which band we're in
+    band = min(y // band_height, num_colors - 1)
+    
+    # Add some randomness to band edges for a more organic feel
+    if random.random() < 0.1:  # 10% chance to use adjacent color
+        if band > 0 and random.random() < 0.5:
+            band = band - 1
+        elif band < num_colors - 1:
+            band = band + 1
+    
+    return colors[band]
+
+def blend_colors(color1, color2, ratio):
+    """Blend two colors by a given ratio (0-1)."""
+    r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+    g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+    b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+    return (r, g, b)
+
+def get_blended_color_at_position(y, height, colors, seed):
+    """Get blended color based on vertical position for smooth transitions."""
+    random.seed(seed)
+    num_colors = len(colors)
+    if num_colors < 2:
+        return colors[0] if colors else (0, 0, 0)
+    
+    # Create color bands
+    band_height = height // num_colors
+    
+    # Determine which band we're in and the position within the band
+    band = min(y // band_height, num_colors - 1)
+    pos_in_band = (y % band_height) / band_height
+    
+    # Blend with next color at the edge of bands
+    if pos_in_band > 0.8 and band < num_colors - 1:
+        # Blend with next color
+        ratio = (pos_in_band - 0.8) / 0.2  # 0 to 1
+        return blend_colors(colors[band], colors[band + 1], ratio)
+    
+    return colors[band]
+
+# ======================
+# VAR1: REFINED WOVEN LATTICE QR CODE
+# ======================
+def generate_var1(width, height, colors, seed, qr_mask):
+    random.seed(seed)
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
     draw = ImageDraw.Draw(img)
     
-    base_density = min(width, height) // 100
-    cell_size = max(10, base_density)
+    # Much denser grid to match VAR4
+    cell_size = max(2, min(width, height) // 200)  # Match VAR4 density
     
-    # Horizontal threads
-    for i in range(0, width, cell_size):
-        offset = random.randint(-3, 3)
-        points = []
-        for y in range(0, height, 3):  # finer sampling for smoothness
-            jitter = random.randint(-2, 2)
-            points.append((i + jitter, y + offset))
-        if len(points) > 1:
-            color = random.choice(colors) + (255,)
-            draw.line(points, fill=color, width=1)
+    # Get QR code data
+    qr_pixels = qr_mask.load()
     
-    # Vertical threads
-    for j in range(0, height, cell_size):
-        offset = random.randint(-3, 3)
-        points = []
-        for x in range(0, width, 3):
-            jitter = random.randint(-2, 2)
-            points.append((x + offset, j + jitter))
-        if len(points) > 1:
-            color = random.choice(colors) + (255,)
-            draw.line(points, fill=color, width=1)
-    
-    # Place QR code in center
-    qr_width, qr_height = qr_img.size
-    qr_x = (width - qr_width) // 2
-    qr_y = (height - qr_height) // 2
-    img.paste(qr_img, (qr_x, qr_y), qr_img)
+    # Fill QR code pixels with dense horizontal and vertical lines
+    for x in range(0, width, cell_size):
+        for y in range(0, height, cell_size):
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    color = random.choice(colors)
+                    # Draw a small cross pattern to fill the module
+                    draw.line([(x, y), (x + cell_size, y)], fill=color, width=1)
+                    draw.line([(x, y), (x, y + cell_size)], fill=color, width=1)
+                    # Add more lines to ensure complete filling
+                    draw.line([(x, y + cell_size//2), (x + cell_size, y + cell_size//2)], fill=color, width=1)
+                    draw.line([(x + cell_size//2, y), (x + cell_size//2, y + cell_size)], fill=color, width=1)
     
     return img
 
 # ======================
-# VAR2: TWISTED CORDS WITH QR
+# VAR2: TWISTED CORDS QR CODE
 # ======================
-def generate_var2(width, height, colors, seed, qr_img):
+def generate_var2(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
     draw = ImageDraw.Draw(img)
     
-    base_density = min(width, height) // 120
-    spacing = max(12, base_density)
+    # Much denser spacing to match VAR4
+    spacing = max(2, min(width, height) // 200)  # Match VAR4 density
     
-    # Create horizontal twisted cords
-    for y_base in range(0, height, spacing * 2):
-        color1 = random.choice(colors) + (255,)
-        color2 = random.choice(colors) + (255,)
-        
-        points1, points2 = [], []
-        phase = random.uniform(0, 2 * math.pi)
-        
-        for x in range(0, width, 4):
-            # Two sine waves slightly out of phase
-            amp = spacing // 3
-            offset1 = amp * math.sin(x * 0.02 + phase)
-            offset2 = amp * math.sin(x * 0.02 + phase + math.pi)
-            
-            points1.append((x, y_base + offset1))
-            points2.append((x, y_base + offset2 + spacing))
-        
-        if len(points1) > 1:
-            draw.line(points1, fill=color1, width=1)
-            draw.line(points2, fill=color2, width=1)
+    # Get QR code data
+    qr_pixels = qr_mask.load()
     
-    # Create vertical twisted cords
-    for x_base in range(0, width, spacing * 2):
-        color1 = random.choice(colors) + (255,)
-        color2 = random.choice(colors) + (255,)
+    # Create dense horizontal twisted cords
+    for y_base in range(0, height, spacing):
+        color = random.choice(colors)
+        points = []
         
-        points1, points2 = [], []
-        phase = random.uniform(0, 2 * math.pi)
+        for x in range(0, width, 1):  # Pixel-level sampling
+            if x < width and y_base < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y_base][0] < 128:  # Black pixel in QR code
+                    # Minimal sine wave for QR code clarity
+                    offset = spacing // 4 * math.sin(x * 0.2)  # Higher frequency, smaller amplitude
+                    points.append((x, y_base + offset))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+                    color = random.choice(colors)
         
-        for y in range(0, height, 4):
-            amp = spacing // 3
-            offset1 = amp * math.sin(y * 0.02 + phase)
-            offset2 = amp * math.sin(y * 0.02 + phase + math.pi)
-            
-            points1.append((x_base + offset1, y))
-            points2.append((x_base + offset2 + spacing, y))
-        
-        if len(points1) > 1:
-            draw.line(points1, fill=color1, width=1)
-            draw.line(points2, fill=color2, width=1)
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
-    # Place QR code in center
-    qr_width, qr_height = qr_img.size
-    qr_x = (width - qr_width) // 2
-    qr_y = (height - qr_height) // 2
-    img.paste(qr_img, (qr_x, qr_y), qr_img)
+    # Create dense vertical twisted cords
+    for x_base in range(0, width, spacing):
+        color = random.choice(colors)
+        points = []
+        
+        for y in range(0, height, 1):  # Pixel-level sampling
+            if y < height and x_base < width:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x_base, y][0] < 128:  # Black pixel in QR code
+                    # Minimal sine wave for QR code clarity
+                    offset = spacing // 4 * math.sin(y * 0.2)  # Higher frequency, smaller amplitude
+                    points.append((x_base + offset, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+                    color = random.choice(colors)
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
     return img
 
 # ======================
-# VAR3: INTERWOVEN DIAGONALS WITH QR
+# VAR3: INTERWOVEN DIAGONALS QR CODE
 # ======================
-def generate_var3(width, height, colors, seed, qr_img):
+def generate_var3(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
     draw = ImageDraw.Draw(img)
     
-    base_density = min(width, height) // 90
-    spacing = max(10, base_density)
+    # Much denser spacing to match VAR4
+    spacing = max(2, min(width, height) // 200)  # Match VAR4 density
+    
+    # Get QR code data
+    qr_pixels = qr_mask.load()
     
     # Diagonal set 1: top-left to bottom-right
     for offset in range(-height, width + height, spacing):
-        if random.random() < 0.85:  # 85% density
-            color = random.choice(colors) + (255,)
-            points = []
-            for t in range(max(0, -offset), min(width, height - offset), 3):
-                x = t
-                y = t + offset
-                if 0 <= x < width and 0 <= y < height:
-                    # Add subtle organic jitter
-                    jitter_x = random.randint(-1, 1)
-                    jitter_y = random.randint(-1, 1)
-                    points.append((x + jitter_x, y + jitter_y))
-            if len(points) > 2:
-                draw.line(points, fill=color, width=1)
+        points = []
+        color = random.choice(colors)
+        
+        for t in range(max(0, -offset), min(width, height - offset), 1):  # Pixel-level sampling
+            x = t
+            y = t + offset
+            if 0 <= x < width and 0 <= y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    points.append((x, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+                    color = random.choice(colors)
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
     # Diagonal set 2: top-right to bottom-left
     for offset in range(0, width + height, spacing):
-        if random.random() < 0.85:
-            color = random.choice(colors) + (255,)
-            points = []
-            for t in range(max(0, offset - height), min(width, offset), 3):
-                x = t
-                y = offset - t
-                if 0 <= x < width and 0 <= y < height:
-                    jitter_x = random.randint(-1, 1)
-                    jitter_y = random.randint(-1, 1)
-                    points.append((x + jitter_x, y + jitter_y))
-            if len(points) > 2:
-                draw.line(points, fill=color, width=1)
-    
-    # Place QR code in center
-    qr_width, qr_height = qr_img.size
-    qr_x = (width - qr_width) // 2
-    qr_y = (height - qr_height) // 2
-    img.paste(qr_img, (qr_x, qr_y), qr_img)
+        points = []
+        color = random.choice(colors)
+        
+        for t in range(max(0, offset - height), min(width, offset), 1):  # Pixel-level sampling
+            x = t
+            y = offset - t
+            if 0 <= x < width and 0 <= y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    points.append((x, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+                    color = random.choice(colors)
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
     return img
 
 # ======================
-# VAR4: MICRO-WEAVE WITH QR
+# VAR4: MICRO-WEAVE QR CODE (UNCHANGED - IT WORKS)
 # ======================
-def generate_var4(width, height, colors, seed, qr_img):
+def generate_var4(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
     draw = ImageDraw.Draw(img)
     
-    # Very fine weave
-    horz_spacing = max(6, min(width, height) // 180)
-    vert_spacing = max(6, min(width, height) // 180)
+    # Very fine weave for QR code visibility
+    horz_spacing = max(1, min(width, height) // 200)
+    vert_spacing = max(1, min(width, height) // 200)
     
-    # Horizontal micro-threads (with gaps)
+    # Get QR code data
+    qr_pixels = qr_mask.load()
+    
+    # Horizontal micro-threads - only where QR code has black pixels
     for y in range(0, height, horz_spacing):
-        color = random.choice(colors) + (255,)
         x = 0
         while x < width:
-            if random.random() < 0.7:  # 70% chance to draw segment
-                seg_len = random.randint(8, 25)
-                end_x = min(x + seg_len, width)
-                draw.line([(x, y), (end_x, y)], fill=color, width=1)
-                x = end_x + random.randint(3, 12)  # gap
-            else:
-                x += random.randint(5, 15)  # skip segment
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    color = random.choice(colors)
+                    # Always draw for QR code pixels
+                    seg_len = random.randint(1, 3)  # Very small segments for QR code
+                    end_x = min(x + seg_len, width)
+                    draw.line([(x, y), (end_x, y)], fill=color, width=1)
+                    x = end_x + 1  # Minimal gaps for QR code
+                else:
+                    x += max(2, horz_spacing)  # Skip white areas in QR code
     
-    # Vertical micro-threads (with gaps)
+    # Vertical micro-threads - only where QR code has black pixels
     for x in range(0, width, vert_spacing):
-        color = random.choice(colors) + (255,)
         y = 0
         while y < height:
-            if random.random() < 0.7:
-                seg_len = random.randint(8, 25)
-                end_y = min(y + seg_len, height)
-                draw.line([(x, y), (x, end_y)], fill=color, width=1)
-                y = end_y + random.randint(3, 12)
-            else:
-                y += random.randint(5, 15)
-    
-    # Place QR code in center
-    qr_width, qr_height = qr_img.size
-    qr_x = (width - qr_width) // 2
-    qr_y = (height - qr_height) // 2
-    img.paste(qr_img, (qr_x, qr_y), qr_img)
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    color = random.choice(colors)
+                    # Always draw for QR code pixels
+                    seg_len = random.randint(1, 3)  # Very small segments for QR code
+                    end_y = min(y + seg_len, height)
+                    draw.line([(x, y), (x, end_y)], fill=color, width=1)
+                    y = end_y + 1  # Minimal gaps for QR code
+                else:
+                    y += max(2, vert_spacing)  # Skip white areas in QR code
     
     return img
 
 # ======================
-# VAR5: MEXICAN SARAPE DESIGN WITH QR
+# VAR5: REFINED WOVEN LATTICE SERAPE QR CODE
 # ======================
-def generate_var5(width, height, colors, seed, qr_img):
+def generate_var5(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
     draw = ImageDraw.Draw(img)
     
-    # Create horizontal bands of solid colors
-    band_height = height // len(colors)
-    for i, color in enumerate(colors):
-        y_start = i * band_height
-        y_end = (i + 1) * band_height
-        if i == len(colors) - 1:  # Make sure the last band fills to the bottom
-            y_end = height
-        
-        # Add some variation to the band edges
+    # Much denser grid to match VAR4
+    cell_size = max(2, min(width, height) // 200)  # Match VAR4 density
+    
+    # Get QR code data
+    qr_pixels = qr_mask.load()
+    
+    # Fill QR code pixels with dense horizontal and vertical lines
+    for x in range(0, width, cell_size):
+        for y in range(0, height, cell_size):
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    # Get color based on position for serape effect
+                    color = get_blended_color_at_position(y, height, colors, seed)
+                    # Draw a small cross pattern to fill the module
+                    draw.line([(x, y), (x + cell_size, y)], fill=color, width=1)
+                    draw.line([(x, y), (x, y + cell_size)], fill=color, width=1)
+                    # Add more lines to ensure complete filling
+                    draw.line([(x, y + cell_size//2), (x + cell_size, y + cell_size//2)], fill=color, width=1)
+                    draw.line([(x + cell_size//2, y), (x + cell_size//2, y + cell_size)], fill=color, width=1)
+    
+    return img
+
+# ======================
+# VAR6: TWISTED CORDS SERAPE QR CODE
+# ======================
+def generate_var6(width, height, colors, seed, qr_mask):
+    random.seed(seed)
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    draw = ImageDraw.Draw(img)
+    
+    # Much denser spacing to match VAR4
+    spacing = max(2, min(width, height) // 200)  # Match VAR4 density
+    
+    # Get QR code data
+    qr_pixels = qr_mask.load()
+    
+    # Create dense horizontal twisted cords
+    for y_base in range(0, height, spacing):
+        # Get color based on position for serape effect
+        color = get_blended_color_at_position(y_base, height, colors, seed)
         points = []
-        for x in range(width + 1):
-            # Create wavy edges between bands
-            if i > 0:  # Not the first band
-                wave = random.randint(-10, 10)
-                points.append((x, y_start + wave))
-            else:
-                points.append((x, y_start))
         
-        for x in range(width, -1, -1):
-            # Create wavy edges between bands
-            if i < len(colors) - 1:  # Not the last band
-                wave = random.randint(-10, 10)
-                points.append((x, y_end + wave))
-            else:
-                points.append((x, y_end))
+        for x in range(0, width, 1):  # Pixel-level sampling
+            if x < width and y_base < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y_base][0] < 128:  # Black pixel in QR code
+                    # Minimal sine wave for QR code clarity
+                    offset = spacing // 4 * math.sin(x * 0.2)  # Higher frequency, smaller amplitude
+                    points.append((x, y_base + offset))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+                    # Get new color for next segment
+                    color = get_blended_color_at_position(y_base, height, colors, seed)
         
-        # Draw the band with some transparency to allow overlap blending
-        draw.polygon(points, fill=color + (200,))
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
-    # Add some decorative vertical stripes
-    stripe_width = width // 30
-    for i in range(0, width, stripe_width * 2):
-        if random.random() < 0.7:  # Not all stripes
-            stripe_color = random.choice(colors)
-            draw.rectangle([i, 0, i + stripe_width, height], fill=stripe_color + (100,))
+    # Create dense vertical twisted cords
+    for x_base in range(0, width, spacing):
+        points = []
+        
+        for y in range(0, height, 1):  # Pixel-level sampling
+            if y < height and x_base < width:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x_base, y][0] < 128:  # Black pixel in QR code
+                    # Get color based on position for serape effect
+                    color = get_blended_color_at_position(y, height, colors, seed)
+                    # Minimal sine wave for QR code clarity
+                    offset = spacing // 4 * math.sin(y * 0.2)  # Higher frequency, smaller amplitude
+                    points.append((x_base + offset, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            draw.line(points, fill=color, width=1)
     
-    # Place QR code in center
-    qr_width, qr_height = qr_img.size
-    qr_x = (width - qr_width) // 2
-    qr_y = (height - qr_height) // 2
-    img.paste(qr_img, (qr_x, qr_y), qr_img)
+    return img
+
+# ======================
+# VAR7: INTERWOVEN DIAGONALS SERAPE QR CODE
+# ======================
+def generate_var7(width, height, colors, seed, qr_mask):
+    random.seed(seed)
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    draw = ImageDraw.Draw(img)
+    
+    # Much denser spacing to match VAR4
+    spacing = max(2, min(width, height) // 200)  # Match VAR4 density
+    
+    # Get QR code data
+    qr_pixels = qr_mask.load()
+    
+    # Diagonal set 1: top-left to bottom-right
+    for offset in range(-height, width + height, spacing):
+        points = []
+        
+        for t in range(max(0, -offset), min(width, height - offset), 1):  # Pixel-level sampling
+            x = t
+            y = t + offset
+            if 0 <= x < width and 0 <= y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    # Get color based on position for serape effect
+                    color = get_blended_color_at_position(y, height, colors, seed)
+                    points.append((x, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            # Get color for the last segment
+            color = get_blended_color_at_position(points[-1][1], height, colors, seed)
+            draw.line(points, fill=color, width=1)
+    
+    # Diagonal set 2: top-right to bottom-left
+    for offset in range(0, width + height, spacing):
+        points = []
+        
+        for t in range(max(0, offset - height), min(width, offset), 1):  # Pixel-level sampling
+            x = t
+            y = offset - t
+            if 0 <= x < width and 0 <= y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    # Get color based on position for serape effect
+                    color = get_blended_color_at_position(y, height, colors, seed)
+                    points.append((x, y))
+                else:
+                    # End the current line and start a new one
+                    if len(points) > 1:
+                        draw.line(points, fill=color, width=1)
+                    points = []
+        
+        # Draw the last line segment
+        if len(points) > 1:
+            # Get color for the last segment
+            color = get_blended_color_at_position(points[-1][1], height, colors, seed)
+            draw.line(points, fill=color, width=1)
+    
+    return img
+
+# ======================
+# VAR8: MICRO-WEAVE SERAPE QR CODE
+# ======================
+def generate_var8(width, height, colors, seed, qr_mask):
+    random.seed(seed)
+    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    draw = ImageDraw.Draw(img)
+    
+    # Very fine weave for QR code visibility
+    horz_spacing = max(1, min(width, height) // 200)
+    vert_spacing = max(1, min(width, height) // 200)
+    
+    # Get QR code data
+    qr_pixels = qr_mask.load()
+    
+    # Horizontal micro-threads - only where QR code has black pixels
+    for y in range(0, height, horz_spacing):
+        # Get color based on position for serape effect
+        color = get_blended_color_at_position(y, height, colors, seed)
+        x = 0
+        while x < width:
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    # Always draw for QR code pixels
+                    seg_len = random.randint(1, 3)  # Very small segments for QR code
+                    end_x = min(x + seg_len, width)
+                    draw.line([(x, y), (end_x, y)], fill=color, width=1)
+                    x = end_x + 1  # Minimal gaps for QR code
+                else:
+                    x += max(2, horz_spacing)  # Skip white areas in QR code
+    
+    # Vertical micro-threads - only where QR code has black pixels
+    for x in range(0, width, vert_spacing):
+        y = 0
+        while y < height:
+            if x < width and y < height:
+                # Check if this pixel is part of the QR code (black)
+                if qr_pixels[x, y][0] < 128:  # Black pixel in QR code
+                    # Get color based on position for serape effect
+                    color = get_blended_color_at_position(y, height, colors, seed)
+                    # Always draw for QR code pixels
+                    seg_len = random.randint(1, 3)  # Very small segments for QR code
+                    end_y = min(y + seg_len, height)
+                    draw.line([(x, y), (x, end_y)], fill=color, width=1)
+                    y = end_y + 1  # Minimal gaps for QR code
+                else:
+                    y += max(2, vert_spacing)  # Skip white areas in QR code
     
     return img
 
@@ -331,7 +543,10 @@ VARIATIONS = {
     2: generate_var2,
     3: generate_var3,
     4: generate_var4,
-    5: generate_var5
+    5: generate_var5,
+    6: generate_var6,
+    7: generate_var7,
+    8: generate_var8
 }
 
 def main():
@@ -354,27 +569,24 @@ def main():
         return
 
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    
-    # Generate QR code
-    qr_img = generate_qr_code(url, RESOLUTIONS[0])  # Use first resolution as reference
 
     for pattern_id in range(1, NUM_PATTERNS + 1):
         print(f"\nGenerating variation {pattern_id}/{NUM_PATTERNS}...")
         seed = random.randint(100000, 999999)
         generate_func = VARIATIONS[pattern_id]
 
-        for res_name, (w, h) in zip(['1920x1080', '1080x1920', '1920x1920'], RESOLUTIONS):
-            print(f"  → Rendering {res_name}...")
-            
-            # Generate QR code for this resolution
-            res_qr_img = generate_qr_code(url, (w, h))
-            
-            img = generate_func(w, h, colors, seed, res_qr_img)
+        print(f"  → Rendering 1920x1920...")
+        
+        # Generate QR code for this resolution
+        qr_img = generate_qr_code(url, RESOLUTION)
+        
+        # Generate the pattern using the QR code as a mask
+        img = generate_func(RESOLUTION[0], RESOLUTION[1], colors, seed, qr_img)
 
-            filename = f"var{pattern_id}_{res_name}.png"
-            output_path = os.path.join(OUTPUT_FOLDER, filename)
-            img.save(output_path, "PNG", dpi=(DPI, DPI), optimize=True)
-            print(f"    Saved: {filename}")
+        filename = f"var{pattern_id}_1920x1920.png"
+        output_path = os.path.join(OUTPUT_FOLDER, filename)
+        img.save(output_path, "PNG", dpi=(DPI, DPI), optimize=True)
+        print(f"    Saved: {filename}")
 
     print(f"\n✅ All {NUM_PATTERNS} QR codes with woven patterns generated in '{OUTPUT_FOLDER}' at 600 DPI.")
     print("\nPattern Guide:")
@@ -382,7 +594,10 @@ def main():
     print("  var2: Twisted Cords — paired threads with gentle helical motion")
     print("  var3: Interwoven Diagonals — dynamic criss-crossing structure")
     print("  var4: Micro-Weave — ultra-fine threads with intentional gaps")
-    print("  var5: Mexican Sarape — horizontal bands of blended colors with decorative stripes")
+    print("  var5: Refined Woven Lattice Serape — clean orthogonal grid with color bands")
+    print("  var6: Twisted Cords Serape — paired threads with gentle helical motion in color bands")
+    print("  var7: Interwoven Diagonals Serape — dynamic criss-crossing structure in color bands")
+    print("  var8: Micro-Weave Serape — ultra-fine threads with intentional gaps in color bands")
     print(f"\nQR codes will track visits with Google Analytics ID: {google_analytics_id}")
 
 if __name__ == "__main__":
