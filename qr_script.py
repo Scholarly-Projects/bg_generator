@@ -127,7 +127,7 @@ def get_blended_color_at_position(y, height, colors, seed):
 # ======================
 def generate_var1(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser grid to match VAR4
@@ -157,7 +157,7 @@ def generate_var1(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var2(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser spacing to match VAR4
@@ -219,7 +219,7 @@ def generate_var2(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var3(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser spacing to match VAR4
@@ -281,7 +281,7 @@ def generate_var3(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var4(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Very fine weave for QR code visibility
@@ -330,7 +330,7 @@ def generate_var4(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var5(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser grid to match VAR4
@@ -361,7 +361,7 @@ def generate_var5(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var6(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser spacing to match VAR4
@@ -425,7 +425,7 @@ def generate_var6(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var7(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Much denser spacing to match VAR4
@@ -491,7 +491,7 @@ def generate_var7(width, height, colors, seed, qr_mask):
 # ======================
 def generate_var8(width, height, colors, seed, qr_mask):
     random.seed(seed)
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 255))  # White background
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))  # White background
     draw = ImageDraw.Draw(img)
     
     # Very fine weave for QR code visibility
