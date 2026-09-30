@@ -38,3 +38,6 @@ pip-wheel-metadata/
 # --- Logs & temp ---
 *.log
 *.tmp
+
+A/
+B/
