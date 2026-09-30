@@ -1,0 +1,40 @@
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Python bytecode & caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- Build / packaging ---
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Secrets & local config ---
+.env
+.env.*
+!.env.example
+
+# --- Editors ---
+.vscode/
+.idea/
+*.swp
+
+# --- macOS ---
+.DS_Store
+._*
+
+# --- Logs & temp ---
+*.log
+*.tmp
